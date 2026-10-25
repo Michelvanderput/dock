@@ -99,9 +99,9 @@ final class DockModel: ObservableObject {
     }
 
     private func appsChanged(_ note: Notification) {
-        if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-           let url = app.bundleURL {
-            launching.remove(url.standardizedFileURL.path)
+        if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+            let key = AppIdentity.key(of: app)
+            launching = launching.filter { AppIdentity.key(forPath: $0) != key }
         }
         rebuild()
     }
@@ -112,19 +112,21 @@ final class DockModel: ObservableObject {
         var running: [String: NSRunningApplication] = [:]
         let regular = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
         for app in regular {
-            if let url = app.bundleURL { running[url.standardizedFileURL.path] = app }
+            running[AppIdentity.key(of: app)] = app
         }
 
         let pinnedPaths = config.pinnedApps.filter { FileManager.default.fileExists(atPath: $0) }
-        let pinnedSet = Set(pinnedPaths)
+        // Match by bundle ID: Safari is pinned as /System/Cryptexes/... but runs as /Applications/Safari.app.
+        let pinnedKeys = Set(pinnedPaths.map(AppIdentity.key(forPath:)))
         var appItems: [DockItem] = pinnedPaths.map {
-            .app(DockApp(path: $0, isRunning: running[$0] != nil, isPinned: true))
+            .app(DockApp(path: $0, isRunning: running[AppIdentity.key(forPath: $0)] != nil, isPinned: true))
         }
 
         if config.showRecents {
             let recents = regular
                 .compactMap { app -> (String, Date)? in
-                    guard let path = app.bundleURL?.standardizedFileURL.path, !pinnedSet.contains(path) else { return nil }
+                    guard let path = app.bundleURL?.standardizedFileURL.path,
+                          !pinnedKeys.contains(AppIdentity.key(of: app)) else { return nil }
                     return (path, app.launchDate ?? .distantPast)
                 }
                 .sorted { $0.1 < $1.1 }
@@ -171,7 +173,8 @@ final class DockModel: ObservableObject {
     // MARK: Actions
 
     func runningApp(_ app: DockApp) -> NSRunningApplication? {
-        NSWorkspace.shared.runningApplications.first { $0.bundleURL?.standardizedFileURL.path == app.path }
+        let key = AppIdentity.key(forPath: app.path)
+        return NSWorkspace.shared.runningApplications.first { AppIdentity.key(of: $0) == key }
     }
 
     func open(_ app: DockApp) {
@@ -222,6 +225,23 @@ final class DockModel: ObservableObject {
             }
         }
         return accepted
+    }
+}
+
+/// Identifies an app by bundle ID, falling back to its path.
+@MainActor
+enum AppIdentity {
+    private static var cache: [String: String] = [:]
+
+    static func key(forPath path: String) -> String {
+        if let key = cache[path] { return key }
+        let key = Bundle(path: path)?.bundleIdentifier ?? path
+        cache[path] = key
+        return key
+    }
+
+    static func key(of app: NSRunningApplication) -> String {
+        app.bundleIdentifier ?? app.bundleURL?.standardizedFileURL.path ?? "pid:\(app.processIdentifier)"
     }
 }
 

@@ -173,16 +173,21 @@ for app in bar.filter({ $0.id.hasPrefix("app:") && !$0.running && onScreen($0) &
     let path = String(app.id.dropFirst(4))
     clickItem(app.id)
     var launched = false
-    for _ in 0..<20 {
+    for _ in 0..<60 {
         wait(0.5)
-        if NSWorkspace.shared.runningApplications.contains(where: { $0.bundleURL?.standardizedFileURL.path == path }) {
+        let id = Bundle(path: path)?.bundleIdentifier
+        if NSWorkspace.shared.runningApplications.contains(where: { $0.bundleIdentifier == id }) {
             launched = true
             break
         }
     }
     if launched { launchedCount += 1; log("ok   click app \(path) launched it") } else { fail("click app \(path): did not launch") }
 }
+wait(1)
 screenshot("05-apps-launched")
+let appIDs = (readState()?.items ?? []).filter { $0.id.hasPrefix("app:") }
+    .map { Bundle(path: String($0.id.dropFirst(4)))?.bundleIdentifier ?? $0.id }
+if Set(appIDs).count == appIDs.count { log("ok   no app shows up twice") } else { fail("an app shows up twice: \(appIDs)") }
 if launchedCount == 0 { fail("no app could be launched from the Dock") }
 
 // 5. Downloads opens its card.
