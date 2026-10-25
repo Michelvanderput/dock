@@ -7,7 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +26,7 @@ jobs:
         run: ARCHS="arm64 x86_64" ./scripts/build-app.sh
 
       - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-26'
         with:
           name: GlassDock
           path: build/GlassDock.zip
@@ -43,5 +48,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui-test
+          name: ui-test-${{ matrix.os }}
           path: shots
