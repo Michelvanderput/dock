@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>nl</string>
+    <key>CFBundleExecutable</key>
+    <string>GlassDock</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>
+    <string>nl.michelvanderput.glassdock</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>GlassDock</string>
+    <key>CFBundleDisplayName</key>
+    <string>GlassDock</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticTermination</key>
+    <false/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>GlassDock bedient Spotify en Muziek voor de widget Speelt nu, en wisselt licht en donker.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>GlassDock toont je volgende afspraak in de widget Hierna.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>GlassDock toont je volgende afspraak in de widget Hierna.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>GlassDock toont je nieuwste downloads in de Dock.</string>
+</dict>
+</plist>

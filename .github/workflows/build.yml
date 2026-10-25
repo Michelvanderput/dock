@@ -1,0 +1,27 @@
+name: Build GlassDock
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kies de nieuwste Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          swift --version
+
+      - name: Bouw GlassDock.app (universal)
+        run: ARCHS="arm64 x86_64" ./scripts/build-app.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassDock
+          path: build/GlassDock.zip
