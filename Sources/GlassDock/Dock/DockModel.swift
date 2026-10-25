@@ -175,6 +175,7 @@ final class DockModel: ObservableObject {
     }
 
     func open(_ app: DockApp) {
+        Debug.log("open app \(app.path)")
         CardPresenter.shared.close()
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true

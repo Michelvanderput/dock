@@ -44,6 +44,16 @@ final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
         trackingArea = area
     }
 
+    override func mouseDown(with event: NSEvent) {
+        Debug.log("mouseDown at \(event.locationInWindow) windowKey=\(window?.isKeyWindow ?? false)")
+        super.mouseDown(with: event)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        Debug.log("rightMouseDown at \(event.locationInWindow)")
+        super.rightMouseDown(with: event)
+    }
+
     override func mouseMoved(with event: NSEvent) {
         super.mouseMoved(with: event)
         onMouseMove?(event.locationInWindow)

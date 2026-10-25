@@ -51,6 +51,7 @@ final class CardPresenter {
     }
 
     func show(id: String, anchor: String, content: AnyView) {
+        Debug.log("show card \(id)")
         close()
         let panel = CardPanel()
         let host = FirstMouseHostingView(rootView: content)

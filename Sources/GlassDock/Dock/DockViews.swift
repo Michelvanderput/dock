@@ -22,6 +22,7 @@ struct DockRootView: View {
                                  showLabel: state.index == index,
                                  config: config,
                                  model: model)
+                    .background(FrameReporter(id: item.id))
                 }
             }
             .padding(DockLayout.pad)

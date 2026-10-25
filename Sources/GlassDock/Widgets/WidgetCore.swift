@@ -287,6 +287,7 @@ struct WidgetCell: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            Debug.log("tap widget \(item.kind.rawValue)")
             if !controller.tap() { CardPresenter.shared.toggle(item: item, anchor: anchor) }
         }
         .onLongPressGesture(minimumDuration: 0.35) {

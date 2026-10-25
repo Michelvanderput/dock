@@ -25,3 +25,23 @@ jobs:
         with:
           name: GlassDock
           path: build/GlassDock.zip
+
+      - name: UI-test met echte muisklikken
+        run: |
+          mkdir -p shots
+          swiftc -O scripts/ui-probe.swift -o build/ui-probe
+          GLASSDOCK_DEBUG=1 build/GlassDock.app/Contents/MacOS/GlassDock > shots/app.log 2>&1 &
+          sleep 8
+          set +e
+          build/ui-probe
+          STATUS=$?
+          echo "---- app log ----"
+          cat shots/app.log
+          cp /tmp/glassdock-debug.json shots/ 2>/dev/null
+          exit $STATUS
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test
+          path: shots

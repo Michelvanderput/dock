@@ -40,10 +40,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &bag)
 
         DockPanelController.shared.show()
+        Debug.start()
         setUpStatusItem()
         handleTerminationSignals()
 
-        if settings.isFirstLaunch {
+        if settings.isFirstLaunch && !Debug.enabled {
             SettingsWindowController.shared.show()
         }
     }
