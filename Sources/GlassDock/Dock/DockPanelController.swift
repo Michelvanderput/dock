@@ -99,6 +99,7 @@ final class DockPanelController {
     private var bag = Set<AnyCancellable>()
     private var pressed: (id: String, time: TimeInterval)?
     private var longPress: Task<Void, Never>?
+    private var pointerPoll: AnyCancellable?
 
     /// The settings, with the icon size shrunk to fit the screen.
     var config: DockConfig { DockLayout.fitted(DockSettings.shared.config, model.items) }
@@ -223,5 +224,24 @@ final class DockPanelController {
         let limit = hover.x == nil ? barTop : barTop + grown
         let newValue: CGFloat? = point.y <= limit ? point.x : nil
         if hover.x != newValue { hover.x = newValue }
+        pollPointer(newValue != nil)
+    }
+
+    /// While the pointer is over the Dock, also read its real position every frame: macOS 26
+    /// sometimes drops the last mouse-moved event, which left magnification beside the pointer.
+    private func pollPointer(_ active: Bool) {
+        guard active != (pointerPoll != nil) else { return }
+        guard active else {
+            pointerPoll = nil
+            return
+        }
+        pointerPoll = Timer.publish(every: 1.0 / 60, on: .main, in: .common).autoconnect()
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let mouse = NSEvent.mouseLocation
+                let frame = self.panel.frame
+                let point = CGPoint(x: mouse.x - frame.minX, y: mouse.y - frame.minY)
+                self.mouseMoved(frame.contains(mouse) ? point : nil)
+            }
     }
 }
