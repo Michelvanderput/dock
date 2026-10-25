@@ -8,7 +8,8 @@ import CoreGraphics
 var failures = 0
 func log(_ s: String) { print("PROBE: " + s); fflush(stdout) }
 func fail(_ s: String) { failures += 1; log("FAIL " + s) }
-func wait(_ seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
+// Spin the run loop: NSWorkspace only refreshes runningApplications while it runs.
+func wait(_ seconds: Double) { RunLoop.current.run(until: Date().addingTimeInterval(seconds)) }
 
 struct Item {
     let id: String
@@ -120,6 +121,12 @@ let hoverTargets = start.items.filter { !$0.id.hasPrefix("sep:") }
 for (index, target) in hoverTargets.enumerated() {
     move(to: target.center)
     wait(0.45)
+    if let first = readState(), first.hoverX < 0 {
+        log("retry hover \(target.id): first pass not tracked")
+        move(to: CGPoint(x: target.center.x + 3, y: target.center.y))
+        move(to: target.center)
+        wait(0.45)
+    }
     guard let now = readState(), let moved = now.item(target.id) else { fail("hover \(target.id): no state"); continue }
     let inside = moved.rect.minX <= cursor.x && cursor.x <= moved.rect.maxX
     let drift = Int((moved.rect.midX - cursor.x).rounded())
