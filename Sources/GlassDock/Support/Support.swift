@@ -93,6 +93,11 @@ enum Fmt {
     static let weekdayTime = formatter("EEE HH:mm")
     static let dateTime = formatter("d MMM yyyy HH:mm:ss")
 
+    /// "zondag 25 oktober" → "Zondag 25 oktober" (Dutch keeps month names lowercase).
+    static func sentence(_ text: String) -> String {
+        text.prefix(1).uppercased() + text.dropFirst()
+    }
+
     /// 4:05 or 1:02:03
     static func clock(_ seconds: TimeInterval) -> String {
         let s = max(0, Int(seconds.rounded(.up)))

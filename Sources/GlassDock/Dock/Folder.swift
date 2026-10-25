@@ -148,7 +148,7 @@ struct FolderCard: View {
             let title: String
             if calendar.isDateInToday(entry.date) { title = "Vandaag" }
             else if calendar.isDateInYesterday(entry.date) { title = "Gisteren" }
-            else { title = Fmt.dayLong.string(from: entry.date).capitalized }
+            else { title = Fmt.sentence(Fmt.dayLong.string(from: entry.date)) }
             if let last = result.last, last.title == title {
                 result[result.count - 1] = Group(title: title, entries: last.entries + [entry])
             } else {

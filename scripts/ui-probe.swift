@@ -168,15 +168,15 @@ if let clock = bar.first(where: { $0.id.hasPrefix("widget:") && onScreen($0) }) 
 
 // 4. Clicking apps launches them, twice in a row with another app in front.
 var launchedCount = 0
-for app in bar.filter({ $0.id.hasPrefix("app:") && !$0.running && onScreen($0) && !$0.id.contains("Launchpad") }).prefix(2) {
+for app in bar.filter({ $0.id.hasPrefix("app:") && !$0.running && onScreen($0) && !$0.id.contains("Launchpad") && !$0.id.hasSuffix("/Apps.app") }).prefix(2) {
     activateFinder()
     let path = String(app.id.dropFirst(4))
     clickItem(app.id)
     var launched = false
     for _ in 0..<60 {
         wait(0.5)
-        let id = Bundle(path: path)?.bundleIdentifier
-        if NSWorkspace.shared.runningApplications.contains(where: { $0.bundleIdentifier == id }) {
+        let name = (path as NSString).lastPathComponent
+        if NSWorkspace.shared.runningApplications.contains(where: { $0.bundleURL?.lastPathComponent == name }) {
             launched = true
             break
         }
@@ -186,7 +186,7 @@ for app in bar.filter({ $0.id.hasPrefix("app:") && !$0.running && onScreen($0) &
 wait(1)
 screenshot("05-apps-launched")
 let appIDs = (readState()?.items ?? []).filter { $0.id.hasPrefix("app:") }
-    .map { Bundle(path: String($0.id.dropFirst(4)))?.bundleIdentifier ?? $0.id }
+    .map { ($0.id as NSString).lastPathComponent }
 if Set(appIDs).count == appIDs.count { log("ok   no app shows up twice") } else { fail("an app shows up twice: \(appIDs)") }
 if launchedCount == 0 { fail("no app could be launched from the Dock") }
 

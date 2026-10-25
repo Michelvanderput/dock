@@ -48,7 +48,7 @@ private struct ClockCard: View {
             Text(Fmt.hms.string(from: widget.now))
                 .font(.system(size: 42, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-            Text(Fmt.dayLong.string(from: widget.now).capitalized)
+            Text(Fmt.sentence(Fmt.dayLong.string(from: widget.now)))
                 .foregroundStyle(.secondary)
             Divider()
             ForEach(widget.zones, id: \.id) { zone in
