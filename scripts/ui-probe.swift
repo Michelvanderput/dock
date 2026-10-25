@@ -137,7 +137,9 @@ for (index, target) in hoverTargets.enumerated() {
     let inside = moved.rect.minX <= cursor.x && cursor.x <= moved.rect.maxX
     let drift = Int((moved.rect.midX - cursor.x).rounded())
     let tracked = abs(now.hoverX - Double(cursor.x)) < 1.5
-    let line = "hover \(target.id): cursor=\(Int(cursor.x)) item=\(Int(moved.rect.minX))...\(Int(moved.rect.maxX)) drift=\(drift) hoverX=\(Int(now.hoverX))"
+    let screenH = NSScreen.screens.first?.frame.height ?? 0
+    let system = NSEvent.mouseLocation
+    let line = "hover \(target.id): system=\(Int(system.x)),\(Int(screenH - system.y)) cg=\(Int(realCursor().x)) cursor=\(Int(cursor.x)) item=\(Int(moved.rect.minX))...\(Int(moved.rect.maxX)) drift=\(drift) hoverX=\(Int(now.hoverX))"
     if inside && tracked { log("ok   " + line) } else { fail(line) }
     if index == 0 { screenshot("02-hover-first") }
     if index == hoverTargets.count / 2 { screenshot("03-hover-middle") }
