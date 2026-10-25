@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import SwiftUI
 
 struct DockApp: Equatable {
     let path: String
@@ -189,6 +190,46 @@ final class DockModel: ObservableObject {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 8_000_000_000)
             self?.launching.remove(path)
+        }
+    }
+
+    /// A left click on a Dock item.
+    func click(_ item: DockItem) {
+        switch item {
+        case .app(let app):
+            open(app)
+        case .widget(let widget):
+            Debug.log("tap widget \(widget.kind.rawValue)")
+            if !WidgetStore.shared.controller(for: widget).tap() {
+                CardPresenter.shared.toggle(item: widget)
+            }
+        case .stack(let widgets):
+            CardPresenter.shared.toggle(id: "stack", anchor: "stack") {
+                AnyView(CardChrome(title: "Meer widgets", symbol: "square.stack.3d.up") {
+                    StackCard(widgets: widgets)
+                })
+            }
+        case .pager:
+            nextPage()
+        case .folder:
+            let folder = downloads
+            CardPresenter.shared.toggle(id: "folder", anchor: "folder") {
+                AnyView(CardChrome(title: "Downloads", symbol: "arrow.down.circle") { FolderCard(folder: folder) })
+            }
+        case .trash:
+            CardPresenter.shared.close()
+            NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash"))
+        case .separator:
+            break
+        }
+    }
+
+    /// Press and hold: a widget grows into its card.
+    func longPress(_ item: DockItem) {
+        if case .widget(let widget) = item {
+            CardPresenter.shared.show(item: widget)
+        } else {
+            click(item)
         }
     }
 

@@ -118,7 +118,7 @@ struct DockItemView: View {
         case .stack(let widgets):
             StackItemView(widgets: widgets, size: s * scale)
         case .pager(let page, let count):
-            PagerItemView(page: page, count: count, size: s) { model.nextPage() }
+            PagerItemView(page: page, count: count, size: s)
         case .folder:
             FolderItemView(folder: model.downloads, size: s * scale)
         case .trash:
@@ -150,8 +150,6 @@ struct AppIconView: View {
                         .offset(y: DockLayout.pad - 2)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture { model.open(app) }
             .contextMenu {
                 Button(app.isRunning ? "Toon" : "Open") { model.open(app) }
                 Button("Toon in Finder") { NSWorkspace.shared.activateFileViewerSelecting([app.url]) }
@@ -170,7 +168,6 @@ struct PagerItemView: View {
     let page: Int
     let count: Int
     let size: CGFloat
-    let action: () -> Void
 
     var body: some View {
         VStack(spacing: 6) {
@@ -186,8 +183,6 @@ struct PagerItemView: View {
             .fixedSize()
         }
         .frame(width: size * 0.5, height: size)
-        .contentShape(Rectangle())
-        .onTapGesture(perform: action)
     }
 }
 
@@ -210,14 +205,6 @@ struct StackItemView: View {
             }
         }
         .background(FrameReporter(id: "stack"))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            CardPresenter.shared.toggle(id: "stack", anchor: "stack") {
-                AnyView(CardChrome(title: "Meer widgets", symbol: "square.stack.3d.up") {
-                    StackCard(widgets: widgets)
-                })
-            }
-        }
     }
 }
 
@@ -263,11 +250,6 @@ struct TrashItemView: View {
             .frame(width: size, height: size)
             .scaleEffect(targeted ? 1.1 : 1)
             .animation(.easeOut(duration: 0.15), value: targeted)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                CardPresenter.shared.close()
-                NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash"))
-            }
             .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
                 for provider in providers {
                     _ = provider.loadObject(ofClass: NSURL.self) { object, _ in

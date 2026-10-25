@@ -57,9 +57,10 @@ enum DockLayout {
     static func panelSize(_ items: [DockItem], _ c: DockConfig) -> CGSize {
         let tallest = c.magnification ? max(c.magnifiedSize, c.iconSize) : c.iconSize
         // Room for growth on both sides: near an end of the Dock all growth goes one way.
+        // Whole points, so the window and the view agree on where items are.
         return CGSize(
-            width: barWidth(items, c) + growth(c) * 2 + 24,
-            height: CGFloat(tallest) + pad * 2 + CGFloat(c.bottomOffset) + labelRoom
+            width: (barWidth(items, c) + growth(c) * 2 + 24).rounded(),
+            height: (CGFloat(tallest) + pad * 2 + CGFloat(c.bottomOffset) + labelRoom).rounded()
         )
     }
 

@@ -204,6 +204,45 @@ let appIDs = (readState()?.items ?? []).filter { $0.id.hasPrefix("app:") }
 if Set(appIDs).count == appIDs.count { log("ok   no app shows up twice") } else { fail("an app shows up twice: \(appIDs)") }
 if launchedCount == 0 { fail("no app could be launched from the Dock") }
 
+// 4b. Two quick clicks while the first app is still bouncing: both must launch.
+activateFinder()
+let quick = bar.filter { $0.id.hasPrefix("app:") && onScreen($0) && !$0.id.contains("Launchpad") && !$0.id.hasSuffix("/Apps.app") }
+    .filter { item in
+        let name = (item.id as NSString).lastPathComponent
+        return !NSWorkspace.shared.runningApplications.contains { $0.bundleURL?.lastPathComponent == name }
+    }
+    .prefix(2)
+if quick.count == 2 {
+    let opensBefore = count("open app")
+    for app in quick {
+        let item = readState()?.item(app.id) ?? app
+        click(item.center)
+        wait(0.3)
+    }
+    wait(1)
+    let opened = count("open app") - opensBefore
+    if opened == 2 { log("ok   two quick clicks opened both apps") } else { fail("two quick clicks: \(opened) of 2 opened (\(quick.map(\.id)))") }
+} else {
+    log("skip quick clicks: not enough apps")
+}
+
+// 4c. Press and hold a widget opens its card, even for widgets whose click does something else.
+activateFinder()
+if let timer = bar.filter({ $0.id.hasPrefix("widget:") && onScreen($0) }).dropFirst(4).first {
+    let item = readState()?.item(timer.id) ?? timer
+    move(to: item.center)
+    wait(0.4)
+    let p = readState()?.item(timer.id)?.center ?? item.center
+    post(.leftMouseDown, p)
+    wait(0.7)
+    post(.leftMouseUp, p)
+    wait(0.5)
+    let card = readState()?.card ?? ""
+    if timer.id.hasSuffix(card) && !card.isEmpty { log("ok   press and hold opens the card") } else { fail("press and hold \(timer.id): card=\(card)") }
+    key(53)
+    wait(0.4)
+}
+
 // 5. Downloads opens its card.
 activateFinder()
 if bar.contains(where: { $0.id == "folder" && onScreen($0) }) {

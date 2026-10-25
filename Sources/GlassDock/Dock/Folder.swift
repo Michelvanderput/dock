@@ -109,12 +109,6 @@ struct FolderItemView: View {
         .frame(width: size, height: size)
         .offset(y: hopOffset)
         .background(FrameReporter(id: "folder"))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            CardPresenter.shared.toggle(id: "folder", anchor: "folder") {
-                AnyView(CardChrome(title: "Downloads", symbol: "arrow.down.circle") { FolderCard(folder: folder) })
-            }
-        }
         .onChange(of: folder.hop) { _, _ in
             withAnimation(.easeOut(duration: 0.18)) { hopOffset = -size * 0.35 }
             Task { @MainActor in

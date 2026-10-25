@@ -33,6 +33,8 @@ class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
 /// Tracks the pointer itself, so magnification works while another app is active.
 final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
     var onMouseMove: ((CGPoint?) -> Void)?
+    var onMouseDown: ((CGPoint) -> Void)?
+    var onMouseUp: ((CGPoint) -> Void)?
     private var trackingArea: NSTrackingArea?
 
     override func updateTrackingAreas() {
@@ -45,10 +47,27 @@ final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
         trackingArea = area
     }
 
+    // Left clicks are handled here, from the same layout the view draws, instead of by SwiftUI
+    // tap gestures: those sometimes dropped a click while the Dock was re-rendering
+    // (an app bouncing, the app list changing). Control-click still goes to the context menu.
     override func mouseDown(with event: NSEvent) {
         Debug.log("mouseDown at \(event.locationInWindow) windowKey=\(window?.isKeyWindow ?? false)")
-        super.mouseDown(with: event)
+        if event.modifierFlags.contains(.control) {
+            super.mouseDown(with: event)
+        } else {
+            onMouseDown?(event.locationInWindow)
+        }
     }
+
+    override func mouseUp(with event: NSEvent) {
+        if event.modifierFlags.contains(.control) {
+            super.mouseUp(with: event)
+        } else {
+            onMouseUp?(event.locationInWindow)
+        }
+    }
+
+    override func mouseDragged(with event: NSEvent) {}
 
     override func rightMouseDown(with event: NSEvent) {
         Debug.log("rightMouseDown at \(event.locationInWindow)")
@@ -79,6 +98,8 @@ final class DockPanelController {
     let model = DockModel()
     let hover = HoverState()
     private var bag = Set<AnyCancellable>()
+    private var pressed: String?
+    private var longPress: Task<Void, Never>?
 
     /// The settings, with the icon size shrunk to fit the screen.
     var config: DockConfig { DockLayout.fitted(DockSettings.shared.config, model.items) }
@@ -92,6 +113,8 @@ final class DockPanelController {
     private init() {
         let host = DockHostingView(rootView: DockRootView(model: model, settings: .shared, hover: hover))
         host.onMouseMove = { [weak self] point in self?.mouseMoved(point) }
+        host.onMouseDown = { [weak self] point in self?.mouseDown(point) }
+        host.onMouseUp = { [weak self] point in self?.mouseUp(point) }
         panel.contentView = host
 
         DockSettings.shared.$config.map { _ in () }
@@ -129,6 +152,51 @@ final class DockPanelController {
                            height: size.height.rounded())
         if panel.frame != frame {
             panel.setFrame(frame, display: true)
+        }
+    }
+
+    /// The Dock item at a point in window coordinates, using the layout the view draws.
+    /// The strip below an icon counts too, so you can fling the pointer to the bottom edge.
+    func item(at point: CGPoint) -> DockItem? {
+        let c = config
+        let items = model.items
+        let size = DockLayout.panelSize(items, c)
+        let layout = DockLayout.arrange(items, c, mouseX: hover.x ?? point.x, containerWidth: size.width)
+        // The view is centred in the window if their widths differ.
+        let x = point.x - (panel.frame.width - size.width) / 2
+        for (index, place) in layout.items.enumerated() where index < items.count {
+            let top = CGFloat(c.bottomOffset) + DockLayout.pad + place.height
+            guard point.y <= top,
+                  x >= place.x - DockLayout.spacing / 2,
+                  x <= place.x + place.width + DockLayout.spacing / 2 else { continue }
+            if case .separator = items[index] { return nil }
+            return items[index]
+        }
+        return nil
+    }
+
+    private func mouseDown(_ point: CGPoint) {
+        longPress?.cancel()
+        guard let item = item(at: point) else {
+            pressed = nil
+            return
+        }
+        pressed = item.id
+        // Press and hold opens a widget's card.
+        longPress = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard let self, !Task.isCancelled, self.pressed == item.id else { return }
+            self.pressed = nil
+            self.model.longPress(item)
+        }
+    }
+
+    private func mouseUp(_ point: CGPoint) {
+        longPress?.cancel()
+        guard let id = pressed else { return }
+        pressed = nil
+        if let item = item(at: point), item.id == id {
+            model.click(item)
         }
     }
 
