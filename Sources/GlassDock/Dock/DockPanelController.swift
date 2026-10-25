@@ -216,6 +216,7 @@ final class DockPanelController {
     private func mouseMoved(_ point: CGPoint?) {
         guard let point else {
             if hover.x != nil { hover.x = nil }
+            pollPointer(false)
             return
         }
         let c = config
