@@ -45,11 +45,17 @@ func post(_ type: CGEventType, _ point: CGPoint, _ button: CGMouseButton = .left
     CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: button)?
         .post(tap: .cghidEventTap)
 }
+func realCursor() -> CGPoint { CGEvent(source: nil)?.location ?? cursor }
 func move(to target: CGPoint, steps: Int = 12) {
     for i in 1...steps {
         let t = CGFloat(i) / CGFloat(steps)
         post(.mouseMoved, CGPoint(x: cursor.x + (target.x - cursor.x) * t, y: cursor.y + (target.y - cursor.y) * t))
         wait(0.015)
+    }
+    // macOS 26 sometimes drops a synthetic move; repeat until the real cursor is there.
+    for _ in 0..<5 where hypot(realCursor().x - target.x, realCursor().y - target.y) > 1 {
+        post(.mouseMoved, target)
+        wait(0.05)
     }
     cursor = target
 }
