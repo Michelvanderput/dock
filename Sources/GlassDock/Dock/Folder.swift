@@ -116,9 +116,6 @@ struct FolderItemView: View {
                 withAnimation(.interpolatingSpring(stiffness: 320, damping: 9)) { hopOffset = 0 }
             }
         }
-        .contextMenu {
-            Button("Open in Finder") { NSWorkspace.shared.open(folder.url) }
-        }
     }
 }
 

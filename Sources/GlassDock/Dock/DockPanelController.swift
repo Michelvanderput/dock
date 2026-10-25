@@ -33,8 +33,9 @@ class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
 /// Tracks the pointer itself, so magnification works while another app is active.
 final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
     var onMouseMove: ((CGPoint?) -> Void)?
-    var onMouseDown: ((CGPoint) -> Void)?
-    var onMouseUp: ((CGPoint) -> Void)?
+    var onMouseDown: ((NSEvent) -> Void)?
+    var onMouseUp: ((NSEvent) -> Void)?
+    var onRightMouseDown: ((NSEvent, NSView) -> Void)?
     private var trackingArea: NSTrackingArea?
 
     override func updateTrackingAreas() {
@@ -53,17 +54,15 @@ final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
     override func mouseDown(with event: NSEvent) {
         Debug.log("mouseDown at \(event.locationInWindow) windowKey=\(window?.isKeyWindow ?? false)")
         if event.modifierFlags.contains(.control) {
-            super.mouseDown(with: event)
+            rightMouseDown(with: event)
         } else {
-            onMouseDown?(event.locationInWindow)
+            onMouseDown?(event)
         }
     }
 
     override func mouseUp(with event: NSEvent) {
-        if event.modifierFlags.contains(.control) {
-            super.mouseUp(with: event)
-        } else {
-            onMouseUp?(event.locationInWindow)
+        if !event.modifierFlags.contains(.control) {
+            onMouseUp?(event)
         }
     }
 
@@ -71,7 +70,7 @@ final class DockHostingView<Content: View>: FirstMouseHostingView<Content> {
 
     override func rightMouseDown(with event: NSEvent) {
         Debug.log("rightMouseDown at \(event.locationInWindow)")
-        super.rightMouseDown(with: event)
+        onRightMouseDown?(event, self)
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -98,7 +97,7 @@ final class DockPanelController {
     let model = DockModel()
     let hover = HoverState()
     private var bag = Set<AnyCancellable>()
-    private var pressed: String?
+    private var pressed: (id: String, time: TimeInterval)?
     private var longPress: Task<Void, Never>?
 
     /// The settings, with the icon size shrunk to fit the screen.
@@ -113,8 +112,9 @@ final class DockPanelController {
     private init() {
         let host = DockHostingView(rootView: DockRootView(model: model, settings: .shared, hover: hover))
         host.onMouseMove = { [weak self] point in self?.mouseMoved(point) }
-        host.onMouseDown = { [weak self] point in self?.mouseDown(point) }
-        host.onMouseUp = { [weak self] point in self?.mouseUp(point) }
+        host.onMouseDown = { [weak self] event in self?.mouseDown(event) }
+        host.onMouseUp = { [weak self] event in self?.mouseUp(event) }
+        host.onRightMouseDown = { [weak self] event, view in self?.rightMouseDown(event, in: view) }
         panel.contentView = host
 
         DockSettings.shared.$config.map { _ in () }
@@ -175,29 +175,41 @@ final class DockPanelController {
         return nil
     }
 
-    private func mouseDown(_ point: CGPoint) {
+    private func mouseDown(_ event: NSEvent) {
         longPress?.cancel()
-        guard let item = item(at: point) else {
+        guard let item = item(at: event.locationInWindow) else {
             pressed = nil
             return
         }
-        pressed = item.id
-        // Press and hold opens a widget's card.
+        pressed = (item.id, event.timestamp)
+        // Press and hold opens a widget's card while you hold.
         longPress = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)
-            guard let self, !Task.isCancelled, self.pressed == item.id else { return }
+            guard let self, !Task.isCancelled, self.pressed?.id == item.id else { return }
             self.pressed = nil
             self.model.longPress(item)
         }
     }
 
-    private func mouseUp(_ point: CGPoint) {
+    private func mouseUp(_ event: NSEvent) {
         longPress?.cancel()
-        guard let id = pressed else { return }
+        guard let press = pressed else { return }
         pressed = nil
-        if let item = item(at: point), item.id == id {
+        guard let item = item(at: event.locationInWindow), item.id == press.id else { return }
+        // macOS 26 can hand over mouseDown only at release, so judge the hold by the event times.
+        if event.timestamp - press.time >= 0.35 {
+            model.longPress(item)
+        } else {
             model.click(item)
         }
+    }
+
+    private func rightMouseDown(_ event: NSEvent, in view: NSView) {
+        longPress?.cancel()
+        pressed = nil
+        CardPresenter.shared.close()
+        let menu = DockMenus.menu(for: item(at: event.locationInWindow), model: model)
+        NSMenu.popUpContextMenu(menu, with: event, for: view)
     }
 
     private func mouseMoved(_ point: CGPoint?) {

@@ -20,7 +20,6 @@ struct DockRootView: View {
         ZStack(alignment: .topLeading) {
             GlassBackground(cornerRadius: CGFloat(config.iconSize) * 0.34 + DockLayout.pad)
                 .frame(width: layout.barWidth, height: barHeight)
-                .contextMenu { DockContextMenu() }
                 .position(x: layout.barMinX + layout.barWidth / 2, y: bottom - barHeight / 2)
 
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
@@ -40,15 +39,6 @@ struct DockRootView: View {
         }
         // Follow the pointer instantly; only ease in and out when it enters or leaves.
         .animation(.easeOut(duration: 0.18), value: hover.x == nil)
-    }
-}
-
-struct DockContextMenu: View {
-    var body: some View {
-        AddWidgetMenu()
-        Divider()
-        Button("Dock-instellingen…") { SettingsWindowController.shared.show() }
-        Button("Stop GlassDock") { NSApp.terminate(nil) }
     }
 }
 
@@ -148,17 +138,6 @@ struct AppIconView: View {
                         .fill(Color.primary.opacity(0.75))
                         .frame(width: 4, height: 4)
                         .offset(y: DockLayout.pad - 2)
-                }
-            }
-            .contextMenu {
-                Button(app.isRunning ? "Toon" : "Open") { model.open(app) }
-                Button("Toon in Finder") { NSWorkspace.shared.activateFileViewerSelecting([app.url]) }
-                Divider()
-                Button(app.isPinned ? "Verwijder uit Dock" : "Houd in Dock") { model.togglePin(app) }
-                if app.isRunning {
-                    Divider()
-                    Button("Verberg") { model.hide(app) }
-                    Button("Stop") { model.quit(app) }
                 }
             }
     }
@@ -264,15 +243,6 @@ struct TrashItemView: View {
                 return true
             }
             .onReceive(Self.refresh) { _ in isFull = TrashItemView.trashHasItems() }
-            .contextMenu {
-                Button("Open") {
-                    NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash"))
-                }
-                Button("Leeg prullenmand") {
-                    Script.run("tell application \"Finder\" to empty trash")
-                    isFull = TrashItemView.trashHasItems()
-                }
-            }
     }
 
     static func trashHasItems() -> Bool {

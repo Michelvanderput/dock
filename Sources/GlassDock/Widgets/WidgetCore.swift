@@ -286,21 +286,11 @@ struct WidgetCell: View {
             if anchor == nil { FrameReporter(id: item.id.uuidString) }
         }
         .modifier(StackGestures(item: item, controller: controller, anchor: anchor))
-        .contextMenu {
-            Button("Toon kaart") { CardPresenter.shared.show(item: item, anchor: anchor) }
-            Button("Verwijder widget") {
-                CardPresenter.shared.close()
-                DockSettings.shared.removeWidget(item.id)
-            }
-            Divider()
-            AddWidgetMenu()
-            Button("Dock-instellingen…") { SettingsWindowController.shared.show() }
-        }
     }
 }
 
-/// Clicks on widgets in the Dock are handled by DockPanelController; only widgets inside the
-/// stack card need SwiftUI gestures. On macOS 26 SwiftUI also sees Dock clicks, so a gesture
+/// Clicks and right-clicks on widgets in the Dock are handled by DockPanelController; only
+/// widgets inside the stack card need SwiftUI gestures. On macOS 26 SwiftUI also sees Dock clicks, so a gesture
 /// there would act twice (open the card and close it again).
 private struct StackGestures: ViewModifier {
     let item: WidgetItem
@@ -316,6 +306,13 @@ private struct StackGestures: ViewModifier {
                 }
                 .onLongPressGesture(minimumDuration: 0.35) {
                     CardPresenter.shared.show(item: item, anchor: anchor)
+                }
+                .contextMenu {
+                    Button("Toon kaart") { CardPresenter.shared.show(item: item, anchor: anchor) }
+                    Button("Verwijder widget") {
+                        CardPresenter.shared.close()
+                        DockSettings.shared.removeWidget(item.id)
+                    }
                 }
         } else {
             content
