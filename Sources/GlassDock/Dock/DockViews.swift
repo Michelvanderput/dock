@@ -11,33 +11,35 @@ struct DockRootView: View {
         let config = settings.config
         let items = model.items
         let size = DockLayout.panelSize(items, config)
-        let state = DockLayout.hover(items, config, mouseX: hover.x, containerWidth: size.width)
+        let layout = DockLayout.arrange(items, config, mouseX: hover.x, containerWidth: size.width)
+        let barHeight = DockLayout.barHeight(config)
+        let bottom = size.height - CGFloat(config.bottomOffset)
 
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            HStack(alignment: .bottom, spacing: DockLayout.spacing) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    DockItemView(item: item,
-                                 scale: index < state.scales.count ? state.scales[index] : 1,
-                                 showLabel: state.index == index,
-                                 config: config,
-                                 model: model)
+        // Items are placed with .position (a layout change, unlike .offset), so hit areas and
+        // the frames cards anchor to match what you see.
+        ZStack(alignment: .topLeading) {
+            GlassBackground(cornerRadius: CGFloat(config.iconSize) * 0.34 + DockLayout.pad)
+                .frame(width: layout.barWidth, height: barHeight)
+                .contextMenu { DockContextMenu() }
+                .position(x: layout.barMinX + layout.barWidth / 2, y: bottom - barHeight / 2)
+
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                let place = index < layout.items.count
+                    ? layout.items[index]
+                    : DockLayout.Placement(x: 0, width: 0, height: 0, scale: 1)
+                DockItemView(item: item, scale: place.scale, showLabel: layout.hovered == index,
+                             config: config, model: model)
+                    .frame(width: place.width, height: place.height, alignment: .bottom)
                     .background(FrameReporter(id: item.id))
-                }
+                    .position(x: place.x + place.width / 2, y: bottom - DockLayout.pad - place.height / 2)
             }
-            .padding(DockLayout.pad)
-            .background(alignment: .bottom) {
-                GlassBackground(cornerRadius: CGFloat(config.iconSize) * 0.34 + DockLayout.pad)
-                    .frame(height: DockLayout.barHeight(config))
-                    .contextMenu { DockContextMenu() }
-            }
-            .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
-                model.handleDrop(providers)
-            }
-            .padding(.bottom, CGFloat(config.bottomOffset))
         }
         .frame(width: size.width, height: size.height)
-        .animation(.easeOut(duration: 0.14), value: hover.x)
+        .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
+            model.handleDrop(providers)
+        }
+        // Follow the pointer instantly; only ease in and out when it enters or leaves.
+        .animation(.easeOut(duration: 0.18), value: hover.x == nil)
     }
 }
 

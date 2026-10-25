@@ -38,37 +38,80 @@ enum DockLayout {
 
     static func panelSize(_ items: [DockItem], _ c: DockConfig) -> CGSize {
         let tallest = c.magnification ? max(c.magnifiedSize, c.iconSize) : c.iconSize
+        // Room for growth on both sides: near an end of the Dock all growth goes one way.
         return CGSize(
-            width: barWidth(items, c) + growth(c) + 24,
+            width: barWidth(items, c) + growth(c) * 2 + 24,
             height: CGFloat(tallest) + pad * 2 + CGFloat(c.bottomOffset) + labelRoom
         )
     }
 
-    struct Hover {
-        var scales: [CGFloat]
-        var index: Int?
+    struct Placement {
+        var x: CGFloat
+        var width: CGFloat
+        var height: CGFloat
+        var scale: CGFloat
     }
 
-    /// Scales follow a cosine bump around the pointer, measured on the unmagnified layout
-    /// so the result never feeds back into itself.
-    static func hover(_ items: [DockItem], _ c: DockConfig, mouseX: CGFloat?, containerWidth: CGFloat) -> Hover {
-        var scales = Array(repeating: CGFloat(1), count: items.count)
-        guard let mouseX else { return Hover(scales: scales, index: nil) }
+    struct Arrangement {
+        var items: [Placement]
+        var barMinX: CGFloat
+        var barWidth: CGFloat
+        var hovered: Int?
+    }
 
-        let maxScale = c.magnification ? CGFloat(max(c.magnifiedSize, c.iconSize) / c.iconSize) : 1
-        let range = CGFloat(c.iconSize) * 2.5
-        var x = (containerWidth - barWidth(items, c)) / 2 + pad
-        var index: Int?
-
-        for (i, item) in items.enumerated() {
-            let w = width(of: item, c)
-            if mouseX >= x - spacing / 2 && mouseX <= x + w + spacing / 2 { index = i }
-            if item.magnifies && maxScale > 1 {
-                let t = min(abs(mouseX - (x + w / 2)) / range, 1)
-                scales[i] = 1 + (maxScale - 1) * (cos(t * .pi) + 1) / 2
-            }
+    /// Where every item goes. Scales follow a cosine bump around the pointer, measured on the
+    /// unmagnified layout, and the row is shifted so the spot under the pointer stays put,
+    /// like the macOS Dock. Without that shift the hovered icon slides out from under the pointer.
+    static func arrange(_ items: [DockItem], _ c: DockConfig, mouseX: CGFloat?, containerWidth: CGFloat) -> Arrangement {
+        let s = CGFloat(c.iconSize)
+        let base = items.map { width(of: $0, c) }
+        let total = barWidth(items, c)
+        var baseX: [CGFloat] = []
+        var x = (containerWidth - total) / 2 + pad
+        for w in base {
+            baseX.append(x)
             x += w + spacing
         }
-        return Hover(scales: scales, index: index)
+
+        guard let mouseX, !items.isEmpty else {
+            let placements = items.indices.map { Placement(x: baseX[$0], width: base[$0], height: s, scale: 1) }
+            return Arrangement(items: placements, barMinX: (containerWidth - total) / 2, barWidth: total, hovered: nil)
+        }
+
+        let maxScale = c.magnification ? CGFloat(max(c.magnifiedSize, c.iconSize) / c.iconSize) : 1
+        let range = s * 2.5
+        var scales = Array(repeating: CGFloat(1), count: items.count)
+        for i in items.indices where items[i].magnifies && maxScale > 1 {
+            let t = min(abs(mouseX - (baseX[i] + base[i] / 2)) / range, 1)
+            scales[i] = 1 + (maxScale - 1) * (cos(t * .pi) + 1) / 2
+        }
+        let widths = items.indices.map { items[$0].magnifies ? base[$0] * scales[$0] : base[$0] }
+
+        // The pointer's spot in the unmagnified row: item k, fraction f of its width.
+        let last = items.count - 1
+        let pivot = min(max(mouseX, baseX[0]), baseX[last] + base[last])
+        var k = last
+        var f: CGFloat = 1
+        for i in items.indices where pivot < baseX[i] + base[i] + spacing {
+            k = i
+            f = min(1, max(0, (pivot - baseX[i]) / base[i]))
+            break
+        }
+        var before: CGFloat = 0
+        for i in 0..<k { before += widths[i] + spacing }
+        var cursorX = pivot - (before + f * widths[k])
+
+        var placements: [Placement] = []
+        var hovered: Int?
+        for i in items.indices {
+            let w = widths[i]
+            placements.append(Placement(x: cursorX, width: w, height: items[i].magnifies ? s * scales[i] : s,
+                                        scale: items[i].magnifies ? scales[i] : 1))
+            if mouseX >= cursorX - spacing / 2 && mouseX <= cursorX + w + spacing / 2 { hovered = i }
+            cursorX += w + spacing
+        }
+        let barMinX = placements[0].x - pad
+        let barMaxX = placements[last].x + placements[last].width + pad
+        return Arrangement(items: placements, barMinX: barMinX, barWidth: barMaxX - barMinX, hovered: hovered)
     }
 }
