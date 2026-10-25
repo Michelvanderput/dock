@@ -8,8 +8,8 @@ struct DockRootView: View {
     @ObservedObject var hover: HoverState
 
     var body: some View {
-        let config = settings.config
         let items = model.items
+        let config = DockLayout.fitted(settings.config, items)
         let size = DockLayout.panelSize(items, config)
         let layout = DockLayout.arrange(items, config, mouseX: hover.x, containerWidth: size.width)
         let barHeight = DockLayout.barHeight(config)

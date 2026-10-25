@@ -125,35 +125,53 @@ for (index, target) in hoverTargets.enumerated() {
 move(to: CGPoint(x: start.panel.midX, y: start.panel.minY - 150))
 wait(0.5)
 
-// 2. Clicking a widget opens its card (Finder is the active app, like in real use).
-activateFinder()
-let widgets = start.items.filter { $0.id.hasPrefix("widget:") }
-if let widget = widgets.first {
-    move(to: widget.center)
+let screenBounds = NSScreen.screens.first?.frame ?? .zero
+func onScreen(_ item: Item) -> Bool { item.rect.minX >= screenBounds.minX && item.rect.maxX <= screenBounds.maxX }
+let bar = start.items.filter { !$0.id.hasPrefix("sep:") }
+let offScreen = bar.filter { !onScreen($0) }
+if offScreen.isEmpty { log("ok   whole Dock fits on screen") } else { fail("\(offScreen.count) items off screen: \(offScreen.map(\.id))") }
+
+func appLog() -> String { (try? String(contentsOfFile: "shots/app.log", encoding: .utf8)) ?? "" }
+func count(_ needle: String) -> Int { appLog().components(separatedBy: needle).count - 1 }
+
+/// Hover first, so the click lands where the magnified item really is.
+func clickItem(_ id: String, right: Bool = false) {
+    guard let item = readState()?.item(id) ?? start.item(id) else { return }
+    move(to: item.center)
     wait(0.4)
-    let current = readState()?.item(widget.id) ?? widget
-    click(current.center)
-    wait(0.8)
-    let card = readState()?.card ?? ""
-    let cardWindow = glassDockWindows().count > 1
-    if card.isEmpty { fail("click widget \(widget.id): no card opened (cardWindow=\(cardWindow))") }
-    else { log("ok   click widget \(widget.id): card \(card)") }
-    screenshot("04-widget-click")
-    key(53) // Esc
-    wait(0.5)
-    if let after = readState()?.card, !after.isEmpty { fail("Esc did not close card \(after)") } else { log("ok   Esc closes card") }
-} else {
-    fail("no widgets in dock")
+    click(readState()?.item(id)?.center ?? item.center, right: right)
 }
 
-// 3. Clicking an app that is not running launches it.
+// 2. Every widget reacts to a click, with Finder as the active app like in real use.
+for widget in bar.filter({ $0.id.hasPrefix("widget:") && onScreen($0) }) {
+    activateFinder()
+    let taps = count("tap widget")
+    clickItem(widget.id)
+    wait(0.7)
+    if count("tap widget") > taps { log("ok   click \(widget.id) reached the widget") } else { fail("click \(widget.id) did nothing") }
+    key(53)
+    wait(0.3)
+}
+
+// 3. A widget without a quick action opens its card; Esc closes it.
 activateFinder()
-if let app = start.items.first(where: { $0.id.hasPrefix("app:") && !$0.running && !$0.id.contains("Finder") }) {
-    let path = String(app.id.dropFirst(4))
-    move(to: app.center)
+if let clock = bar.first(where: { $0.id.hasPrefix("widget:") && onScreen($0) }) {
+    clickItem(clock.id)
+    wait(0.7)
+    let card = readState()?.card ?? ""
+    if card.isEmpty { fail("first widget: no card") } else { log("ok   first widget opens card") }
+    screenshot("04-widget-card")
+    key(53)
     wait(0.4)
-    let current = readState()?.item(app.id) ?? app
-    click(current.center)
+    if let after = readState()?.card, !after.isEmpty { fail("Esc did not close card") } else { log("ok   Esc closes card") }
+}
+
+// 4. Clicking apps launches them, twice in a row with another app in front.
+var launchedCount = 0
+for app in bar.filter({ $0.id.hasPrefix("app:") && !$0.running && onScreen($0) && !$0.id.contains("Launchpad") }).prefix(2) {
+    activateFinder()
+    let path = String(app.id.dropFirst(4))
+    clickItem(app.id)
     var launched = false
     for _ in 0..<20 {
         wait(0.5)
@@ -162,22 +180,32 @@ if let app = start.items.first(where: { $0.id.hasPrefix("app:") && !$0.running &
             break
         }
     }
-    screenshot("05-app-click")
-    if launched { log("ok   click app \(path) launched it") } else { fail("click app \(path): did not launch") }
-} else {
-    log("skip app click: no pinned app that is not running")
+    if launched { launchedCount += 1; log("ok   click app \(path) launched it") } else { fail("click app \(path): did not launch") }
 }
+screenshot("05-apps-launched")
+if launchedCount == 0 { fail("no app could be launched from the Dock") }
 
-// 4. Clicking the Downloads folder opens its card.
+// 5. Downloads opens its card.
 activateFinder()
-if let folder = start.items.first(where: { $0.id == "folder" }) {
-    move(to: folder.center)
-    wait(0.4)
-    click(readState()?.item("folder")?.center ?? folder.center)
+if bar.contains(where: { $0.id == "folder" && onScreen($0) }) {
+    clickItem("folder")
     wait(0.8)
     let card = readState()?.card ?? ""
     if card == "folder" { log("ok   click Downloads opens card") } else { fail("click Downloads: card=\(card)") }
-    screenshot("06-folder-click")
+    screenshot("06-folder-card")
+    key(53)
+    wait(0.4)
+}
+
+// 6. Right-click shows a menu.
+activateFinder()
+if let finder = bar.first(where: { $0.id.contains("Finder.app") && onScreen($0) }) {
+    let before = glassDockWindows().count
+    clickItem(finder.id, right: true)
+    wait(0.8)
+    let menus = glassDockWindows().filter { $0.layer >= 100 }
+    screenshot("07-context-menu")
+    if !menus.isEmpty || glassDockWindows().count > before { log("ok   right-click shows a menu") } else { fail("right-click: no menu") }
     key(53)
     wait(0.4)
 }

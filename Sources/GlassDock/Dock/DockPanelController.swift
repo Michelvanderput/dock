@@ -79,9 +79,12 @@ final class DockPanelController {
     let hover = HoverState()
     private var bag = Set<AnyCancellable>()
 
+    /// The settings, with the icon size shrunk to fit the screen.
+    var config: DockConfig { DockLayout.fitted(DockSettings.shared.config, model.items) }
+
     /// Height of the top of the glass bar above the bottom of the window.
     var barTop: CGFloat {
-        let c = DockSettings.shared.config
+        let c = config
         return CGFloat(c.bottomOffset) + DockLayout.barHeight(c)
     }
 
@@ -118,7 +121,7 @@ final class DockPanelController {
 
     func layout() {
         guard let screen = NSScreen.screens.first else { return }
-        let size = DockLayout.panelSize(model.items, DockSettings.shared.config)
+        let size = DockLayout.panelSize(model.items, config)
         let frame = NSRect(x: (screen.frame.midX - size.width / 2).rounded(),
                            y: screen.frame.minY,
                            width: size.width.rounded(),
@@ -133,7 +136,7 @@ final class DockPanelController {
             if hover.x != nil { hover.x = nil }
             return
         }
-        let c = DockSettings.shared.config
+        let c = config
         // Once magnified, keep magnifying while the pointer is over the enlarged icons.
         let grown = c.magnification ? CGFloat(max(0, c.magnifiedSize - c.iconSize)) : 0
         let limit = hover.x == nil ? barTop : barTop + grown

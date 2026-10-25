@@ -1,11 +1,29 @@
-import CoreGraphics
-import Foundation
+import AppKit
 
 /// The geometry of the Dock, shared by the window (to size itself) and the view (for magnification).
 enum DockLayout {
     static let pad: CGFloat = 8
     static let spacing: CGFloat = 6
     static let labelRoom: CGFloat = 36
+
+    /// The config with the icon size shrunk so the Dock fits the screen, like the macOS Dock.
+    @MainActor
+    static func fitted(_ c: DockConfig, _ items: [DockItem]) -> DockConfig {
+        guard let screen = NSScreen.screens.first, !items.isEmpty else { return c }
+        let available = screen.frame.width - 16
+        let full = barWidth(items, c)
+        guard full > available else { return c }
+        var zero = c
+        zero.iconSize = 0
+        let fixed = barWidth(items, zero)
+        let perPoint = (full - fixed) / CGFloat(c.iconSize)
+        guard perPoint > 0 else { return c }
+        var fitted = c
+        fitted.iconSize = Double(max(20, ((available - fixed) / perPoint).rounded(.down)))
+        // Keep the same magnification ratio.
+        fitted.magnifiedSize = max(fitted.iconSize, c.magnifiedSize * fitted.iconSize / c.iconSize)
+        return fitted
+    }
 
     static func barHeight(_ c: DockConfig) -> CGFloat {
         CGFloat(c.iconSize) + pad * 2
