@@ -285,14 +285,7 @@ struct WidgetCell: View {
         .background {
             if anchor == nil { FrameReporter(id: item.id.uuidString) }
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            Debug.log("tap widget \(item.kind.rawValue)")
-            if !controller.tap() { CardPresenter.shared.toggle(item: item, anchor: anchor) }
-        }
-        .onLongPressGesture(minimumDuration: 0.35) {
-            CardPresenter.shared.show(item: item, anchor: anchor)
-        }
+        .modifier(StackGestures(item: item, controller: controller, anchor: anchor))
         .contextMenu {
             Button("Toon kaart") { CardPresenter.shared.show(item: item, anchor: anchor) }
             Button("Verwijder widget") {
@@ -302,6 +295,30 @@ struct WidgetCell: View {
             Divider()
             AddWidgetMenu()
             Button("Dock-instellingen…") { SettingsWindowController.shared.show() }
+        }
+    }
+}
+
+/// Clicks on widgets in the Dock are handled by DockPanelController; only widgets inside the
+/// stack card need SwiftUI gestures. On macOS 26 SwiftUI also sees Dock clicks, so a gesture
+/// there would act twice (open the card and close it again).
+private struct StackGestures: ViewModifier {
+    let item: WidgetItem
+    let controller: WidgetController
+    let anchor: String?
+
+    func body(content: Content) -> some View {
+        if let anchor {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !controller.tap() { CardPresenter.shared.toggle(item: item, anchor: anchor) }
+                }
+                .onLongPressGesture(minimumDuration: 0.35) {
+                    CardPresenter.shared.show(item: item, anchor: anchor)
+                }
+        } else {
+            content
         }
     }
 }
