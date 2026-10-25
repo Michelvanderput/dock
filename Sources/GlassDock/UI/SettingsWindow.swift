@@ -54,7 +54,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationSplitView {
             List(SettingsTab.allCases, selection: $tab) { tab in
-                Label(tab.title, systemImage: tab.symbol).tag(tab)
+                Label(tab.title, systemImage: tab.symbol).tag(Optional(tab))
             }
             .navigationSplitViewColumnWidth(170)
         } detail: {

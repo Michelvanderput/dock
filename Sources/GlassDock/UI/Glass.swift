@@ -24,7 +24,7 @@ private struct FrostedGlass: View {
     let shape: RoundedRectangle
 
     var body: some View {
-        VisualEffect(material: .popover)
+        GlassEffectView(material: .popover)
             .overlay(
                 LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.02)],
                                startPoint: .top, endPoint: .bottom)
@@ -41,7 +41,7 @@ private struct FrostedGlass: View {
     }
 }
 
-struct VisualEffect: NSViewRepresentable {
+struct GlassEffectView: NSViewRepresentable {
     var material: NSVisualEffectView.Material
 
     func makeNSView(context: Context) -> NSVisualEffectView {

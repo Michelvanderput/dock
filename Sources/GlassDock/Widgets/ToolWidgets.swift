@@ -454,13 +454,15 @@ final class DevServersWidget: WidgetController {
     }
 
     func scan() {
-        Task.detached(priority: .utility) { [weak self] in
-            let output = Shell.run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:LISTEN"])
-            let servers = DevServersWidget.parse(output)
-            await MainActor.run {
-                if self?.servers != servers { self?.servers = servers }
-            }
+        Task { [weak self] in
+            let servers = await Self.listServers()
+            if let self, self.servers != servers { self.servers = servers }
         }
+    }
+
+    /// Runs lsof off the main thread.
+    nonisolated static func listServers() async -> [DevServer] {
+        parse(Shell.run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:LISTEN"]))
     }
 
     nonisolated static func parse(_ output: String) -> [DevServer] {

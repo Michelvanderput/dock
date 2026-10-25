@@ -98,18 +98,23 @@ final class CardPresenter {
             monitors.append(global)
         }
         if let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .keyDown], handler: { event in
-            MainActor.assumeIsolated {
+            let isKey = event.type == .keyDown
+            let keyCode = event.keyCode
+            let window = event.window
+            let consumed = MainActor.assumeIsolated { () -> Bool in
                 let presenter = CardPresenter.shared
-                if event.type == .keyDown {
-                    if event.keyCode == 53 { presenter.close(); return nil } // Esc
-                    return event
+                if isKey {
+                    guard keyCode == 53 else { return false } // Esc
+                    presenter.close()
+                    return true
                 }
                 // Clicks in the Dock decide for themselves (another widget swaps the card).
-                if event.window !== presenter.panel && event.window !== DockPanelController.shared.panel {
+                if window !== presenter.panel && window !== DockPanelController.shared.panel {
                     presenter.close()
                 }
-                return event
+                return false
             }
+            return consumed ? nil : event
         }) {
             monitors.append(local)
         }

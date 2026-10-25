@@ -34,7 +34,7 @@ final class NowPlayingWidget: WidgetController {
         let tracks = Player.allCases.filter(\.isRunning).compactMap { self.read($0) }
         let next = tracks.first(where: \.playing) ?? tracks.first
         if next?.title != track?.title || next?.playing != track?.playing || next?.player != track?.player
-            || abs((next?.position ?? 0) - (track.map(currentPosition) ?? 0)) > 2 {
+            || abs((next?.position ?? 0) - (track.map { currentPosition($0) } ?? 0)) > 2 {
             track = next
         }
     }
