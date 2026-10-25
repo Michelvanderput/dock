@@ -102,6 +102,13 @@ guard let start = state, !start.items.isEmpty else {
 log("panel \(start.panel)")
 for item in start.items { log("item \(item.id) \(item.rect) running=\(item.running)") }
 for w in glassDockWindows() { log("window layer=\(w.layer) bounds=\(w.bounds)") }
+// Anything else lying over the Dock would swallow hover and clicks.
+let dockArea = CGRect(x: 0, y: start.panel.maxY - 80, width: 4000, height: 80)
+for w in CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? [] {
+    guard let b = w[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: b),
+          rect.intersects(dockArea) else { continue }
+    log("over dock: \(w[kCGWindowOwnerName as String] as? String ?? "?") '\(w[kCGWindowName as String] as? String ?? "")' layer=\(w[kCGWindowLayer as String] as? Int ?? 0) alpha=\(w[kCGWindowAlpha as String] as? Double ?? 1) \(rect)")
+}
 
 activateFinder()
 move(to: CGPoint(x: start.panel.midX, y: start.panel.minY - 150))

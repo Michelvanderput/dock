@@ -3,8 +3,9 @@ import SwiftUI
 import Combine
 
 extension NSWindow.Level {
-    static let glassDock = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)))
-    static let glassDockCard = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
+    // One above the system Dock: its hidden window still lies along the bottom edge on macOS 26.
+    static let glassDock = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
+    static let glassDockCard = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 2)
 }
 
 final class DockPanel: NSPanel {
